@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+ <head>
+   <meta charset="utf-8">
+   <title>javascript test</title>
+   <script type="text/javascript">
+     <!--
+/* 基礎的な関数 */
+	function a() {
+	var a = "hello!";
+	alert(a);
+	}
+
+/* 時刻表記 */
+	function jikoku() {
+	dd = new Date();
+	document.F1.T1.value = dd.toLocaleString();
+	window.setTimeout("jikoku()", 1000);
+	}
+
+/* ファイルの読み込み、別窓にて表示 */
+	function newopen() {
+	open('./testes','testes')
+	}
+
+/* ブラウザの情報表示 */
+	function navinavi() {
+	alert('appCodeName:' + navigator.appCodeName + '\n' +
+	'appName:' + navigator.appName + '\n' + 
+	'appVersion:' + navigator.appVersion + '\n' + 
+	'userAgent:' + navigator.userAgent + '\n' + 
+	'language:' + navigator.language + '\n' + 
+	'platform:' + navigator.platform);
+	}
+
+/* テキストエリアに与えたURLへジャンプ */
+	function jump(url) {
+	location.href = url;
+	}
+
+	 // -->
+   </script>   
+ </head>
+ <body onload="jikoku()">
+   <form name="F1" action="#">
+     <input type="text" name="T1" size="50">
+     <input type="button" value="click" onclick="a()"/>
+     <input type="button" value="click" onclick="newopen()"/>
+     <input type="button" value="navinavi" onclick="navinavi()"/>
+     <input type="text" size="50" value="" name="url">
+     <input type="button" value="click" onclick="jump(document.F1.url.value)"/>
+   </form>
+ </body>
+</html>
