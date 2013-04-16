@@ -1,0 +1,39 @@
+#include <iostream>
+#include <string>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+using namespace std;
+
+void generate_ans(char* a,char* b,char* c){
+  srand((unsigned int)time(NULL));
+
+  *a = static_cast <char> (rand()+1) % 10;
+  *b = static_cast <char> (rand()+1) % 10;
+  *c = static_cast <char> (rand()+1) % 10;
+
+}
+
+int main(){
+  char x;
+  char y;
+  char z;
+
+  char ans_x;
+  char ans_y;
+  char ans_z;
+
+  generate_ans(&ans_x,&ans_y,&ans_z);
+
+  cout << "game start!" << endl;
+  cout << "一番目の数字を入力して下さい。＞" << endl;
+  cin >> x;
+  cout << "二番目の数字を入力して下さい。＞" << endl;
+  cin >> y;
+  cout << "三番目の数字を入力して下さい。＞" << endl;
+  cin >> z;
+
+  cout << ans_x << ans_y << ans_z << endl;
+
+  return 0;
+}
