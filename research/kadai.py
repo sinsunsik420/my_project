@@ -2,6 +2,24 @@
 # -*- encoding:utf-8 -*-
 
 from argparse import ArgumentParser
+from multiprocessing import Pool,Value,Array
+from random import randint
+from math import sqrt
+from ctypes import Structure,c_int
+
+def tomap(args): return getattr(args[0], args[1])(*args[2:])
+
+def toapply(cls, mtd_name, *args, **kwargs): return getattr(cls, mtd_name)(*args, **kwargs)
+
+class MulHelper(object):
+    def __init__(self, cls, mtd_name):
+        self.cls = cls
+        self.mtd_name = mtd_name
+
+    def __call__(self, *args, **kwargs): return getattr(self.cls, self.mtd_name)(*args, **kwargs)
+
+class Point(Structure):
+    _fields_ = [('i', c_int), ('i', c_int)]
 
 def getargs():
 
@@ -17,138 +35,99 @@ def getargs():
 
 class Kadai:
 
-    import random
-    from itertools import combinations
-    import math
-    random.seed()
+    def __init__(self,o_f,x_min,x_max,y_min,y_max,data_num,ncore):
+        self.f = o_f
+        self.x_min = x_min
+        self.x_max = x_max
+        self.y_min = y_min
+        self.y_max = y_max
+        self.num = data_num
+        self.ncore = ncore
+        self.data = []
 
-    def __init__(self,f,x_min,x_max,y_min,y_max,data_num):
-        if not f == "": self.data_file = f
+    def thread_wrapper(self,args): return args[0](*args[1:])
+
+    def generate_data(self):
+        pool = Pool(self.ncore)
+        if self.f == None:
+            self.data = pool.map(MulHelper(self,'random_data_gene'),range(self.num))
         else:
-            self.data_file = ""
-            self.x_min = x_min
-            self.x_max = x_max
-            self.y_min = y_min
-            self.num = data_num
-        
-    def distance(x_1,x_2,y_1,y_2): return math.sqrt((x_1-x_2)*(x_1-x_2)+(y_1-y_2)*(y_1-y_2))
+            with open(self.f) as f:
+                self.data = pool.map( MulHelper(self,'thread_wrapper'),[ (MulHelper(self,'file_process'),line) for line in f ] )
 
-    def kadai_2(self):
-        x_range = raw_input("xの範囲を指定してください (例) -1:1")
-        x_min,x_max = [int(x) for x in x_range.strip().split(":")]
-        y_range = raw_input("xの範囲を指定してください (例) -1:1")
-        y_min,y_max = [int(x) for x in x_range.strip().split(":")]
+    def random_data_gene(self,x): return (randint(self.x_min,self.x_max), randint(self.y_min,self.y_max))
 
-        count = 0
-        if self.data_file == "":
-            for i in xrange(self.num):
-                x = random.randint(self.x_min,self.x_max)
-                y = random.randint(self.y_min,self.y_max)
-                if x_min <= x <= x_max and y_min <= y <= y_max,data: count += 1
-        print("x_min:x_max = %d:%d 及び y_min:y_max = %d:%d の矩形にある点の個数は %d" % (x_min,x_max,y_min,y_max,count) )
+    def max_min_distance1(self,p): return self.distance(p[0],self.x_max,p[1],self.y_min)
 
-    def kadai_3(self):
-        cost = raw_input("rを設定してください:")
-        cost = float(cost)
-        count = raw_input("点の個数を設定してください:")
-        count = int(count)
-        x_next = random.randint(self.x_min,self.x_max)
-        y_next = random.randint(self.y_min,self.y_max)
-        if self.data_file == "":
-            for i in xrange(self.num):
-                x = random.randint(self.x_min,self.x_max)
-                y = random.randint(self.y_min,self.y_max)
-                if cost < distance(x,x_next,y,y_next):
-                    print("到達不可")
-                    return 0
-                x_next = x
-                y_next = y
-        print("到達不可")
+    def max_min_distance2(self,p): return self.distance(p[0],self.x_min,p[1],self.y_min)
+
+    def file_process(self,line):
+        x,y = line.strip().split(" ")
+        x = int(x)
+        y = int(y)
+
+        if self.x_max < x: self.x_max = x
+        elif self.x_min > x: self.x_min = x
+
+        if self.y_max < y: self.y_max = y
+        elif self.y_min > y: self.y_min = y
+
+        return (x,y)
+    
+    def count_filter(self,data,x_min,x_max,y_min,y_max): return (x_min <= data[0] <= x_max and y_min <= data[1] <= y_max) 
+
+    def reach_out(self,p1,p2,cost):
+        distance = self.distance(*(p1+p2))
+        return True if distance < cost else False
+
+    def distance(self,x_1,x_2,y_1,y_2): return sqrt((x_1-x_2)*(x_1-x_2)+(y_1-y_2)*(y_1-y_2))
 
     def kadai_1(self):
-        max_pair1 = []
-        min_pair1 = []
-        max_pair2 = []
-        min_pair2 = []
-        
-        max_distance1 = 0.0
-        min_distance1 = distance(self.x_min,self.x_max,self.y_min,self.y_max)
-        max_distance2 = 0.0
-        min_distance2 = min_distance1
+        pool = Pool(self.ncore)
+        result = pool.map(MulHelper(self,'max_min_distance1'),[d for d in self.data])
+        max_data1 = max(enumerate(result),key=lambda x:x[1])
+        max_point1 = self.data[max_data1[0]]
+        min_data1 = min(enumerate(result),key=lambda x:x[1])                   
+        min_point1 = self.data[min_data1[0]]
+        distance1 = self.distance(max_point1[0],min_point1[0],max_point1[1],min_point1[1])
 
-        if self.data_file == "":
-            for i in xrange(self.num):
-                x = random.randint(self.x_min,self.x_max)
-                y = random.randint(self.y_min,self.y_max)
-                distance1 = distance(x,self.x_max,y,self.y_min)
-                distance2 = distance(x,self.x_min,y,self.y_min)
+        result = pool.map(MulHelper(self,'max_min_distance2'),[d for d in self.data])
+        max_data2 = max(enumerate(result),key=lambda x:x[1])                   
+        max_point2 = self.data[max_data2[0]]
+        min_data2 = min(enumerate(result),key=lambda x:x[1])                   
+        min_point2 = self.data[min_data2[0]]
+        distance2 = self.distance(max_point2[0],min_point2[0],max_point2[1],min_point2[1])
 
-                if max_distance1 < distance1: 
-                    max_pair1 = []
-                    max_pair1.apend((x,y))
-                elif max_distance1 == distance1: max_pair1.append((x,y))
+        min_data = (max_point1,min_point1,distance1) if  distance1 < distance2 else (max_point2,min_point2,distance2)
+        print("距離の最大値は%s,ペアは(x1,y1)=(%s,%s),(x2,y2)=(%s,%s)" % ( str(max_data[2]),str(max_data[0][0]),str(max_data[0][1]),str(max_data[1][0]),str(max_data[1][1]) ))
 
-                if min_distance1 > distance1: 
-                    min_pair1 = []
-                    min_pair1.apend((x,y))
-                elif min_distance1 == distance1: min_pair1.append((x,y))
+    def kadai_2(self):
+        x_range = raw_input("xの範囲を指定してください (例) -1:1\n")
+        x_min,x_max = [int(x) for x in x_range.strip().split(":")]
+        y_range = raw_input("yの範囲を指定してください (例) -1:1\n")
+        y_min,y_max = [int(y) for y in y_range.strip().split(":")]
+        pool = Pool(self.ncore)
+        count = sum(pool.map(MulHelper(self,'thread_wrapper'),[(MulHelper(self,'count_filter'), d, x_min, x_max, y_min, y_max) for d in self.data]))
+        print("x_min:x_max = %s:%s 及び y_min:y_max = %s:%s の矩形にある点の個数は %d" % ( str(x_min), str(x_max), str(y_min), str(y_max), count ))
 
-                if max_distance2 < distance2: 
-                    max_pair2 = []
-                    max_pair2.apend((x,y))
-                elif max_distance2 == distance2: max_pair2.append((x,y))
-
-                if min_distance2 > distance2: 
-                    min_pair2 = []
-                    min_pair2.apend((x,y))
-                elif min_distance2 == distance2: min_pair2.append((x,y))
-
-                print max_pair1
-                print min_pair1
-                print max_pair2
-                print max_pair2
-"""
-        else:
-            with open(self.data_file) as f:
-                for line in f:
-                    x,y = [float(x),float(y) for x,y in line.strip().split(" ")]
-                    y = random.randint(self.y_min,self.y_max)
-                    distance = distance(x - self.x_min,2)+math.pow(y-self.y_min,2))
-                    if max_distance < distance: 
-                        max_pair = []
-                        max_pair.apend((x,y))
-                    elif max_distance == distance: max_pair.append((x,y))
-                    if min_distance > distance: 
-                        min_pair = []
-                        min_pair.apend((x,y))
-                    elif min_distance == distance: min_pair.append((x,y))
-                    
-                    print max_pair
-                    print min_pair
-"""
-
+    def kadai_3(self):
+        cost = raw_input("rを設定してください: ")
+        cost = float(cost)
+        p_q = raw_input("pとqを設定してください: (例)1:10 ただし p,q > 0\n")
+        p,q = [int(x) for x in p_q.strip().split(":")]
+        pool = Pool(self.ncore)
+        ex_data = self.data[p:q]
+        gyo = [ (MulHelper(self,'reach_out'), p1, p2, cost) for p1,p2 in zip(ex_data[1:],ex_data[:-1]) ]
+        print(False) if False in pool.map( MulHelper(self,'thread_wrapper'),[ (MulHelper(self,'reach_out'), p1, p2, cost) for p1,p2 in zip(self.data[1:],self.data[:-1]) ] ) else True
 
 if __name__ == '__main__':
+
     args = getargs()
-    x_min,x_max = [ int(x) for x in args.x_max_min..strip().split(":")]
-    y_min,y_max = [ int(x) for x in args.y_max_min..strip().split(":")]
-    k = Kadai.new(args.data_file,args.num,x_min,x_max,y_min,y_max)
+    x_min,x_max = [ int(x) for x in args.x_min_max.strip().split(":")]
+    y_min,y_max = [ int(x) for x in args.y_min_max.strip().split(":")]
+    k = Kadai(args.data_file,x_min,x_max,y_min,y_max,args.num,args.ncore)
+    k.generate_data()
     for kadai in args.kadai:
         if kadai == '1': k.kadai_1()
         elif kadai == '2': k.kadai_2()
         else: n = k.kadai_3()
-
-
-"""
-epsilon = 0.00001
-
-def semi_sqrt(a):
-    x = 0.0
-    x_next = (1.0/a)*9.0
-
-    for i in range(20):
-        x = x_next
-        x_next = x*(1.5 - 0.5*a*x*x)
-        print x_next
-    print a*x_next
-"""
