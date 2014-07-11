@@ -3,6 +3,7 @@
 
 from collections import defaultdict as dd
 from argparse import ArgumentParser
+import json
 
 def getargs():
 
@@ -35,12 +36,12 @@ def newman_community_detection(g_dic):
         # assign row values
         for neighbor in g_dic[node].keys():
             kj = sum([v for v in g_dic[neighbor].values()])
-            result = sum([g_dic[node][n] - (ki * kj)/(2*m) for n in neighbor]) / (2*m)
+            result = sum([g_dic[node][n] - (ki * kj)/m for n in neighbor]) / m
             dqr[(neighbor,)] = result
 
         H[(node,)] = max(dqr.items(), key=lambda x:x[1])
         deltaQ[(node,)] = dqr
-        av = ki/(2.0 * m)
+        av = ki/ m
         a[(node,)] = av
         q -= av**2
 
